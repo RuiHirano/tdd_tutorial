@@ -25,9 +25,9 @@ class Franc extends Money {
 }
 
 class Calculator {
-    exchanger: Exchanger
-    constructor(exchanger: Exchanger) {
-        this.exchanger = exchanger
+    bank: Bank
+    constructor(bank: Bank) {
+        this.bank = bank
     }
 
     // かけ算
@@ -37,13 +37,13 @@ class Calculator {
 
     // return added money by money2 currency type   money1 + money2
     plus(money1: Money, money2: Money, currency: CurrencyType) {
-        const amount = this.exchanger.exchange(money1, currency).amount + this.exchanger.exchange(money2, currency).amount
+        const amount = this.bank.exchange(money1, currency).amount + this.bank.exchange(money2, currency).amount
         return new Money(amount, money2.currency)
     }
 
     // money1 - money2
     reduce(money1: Money, money2: Money, currency: CurrencyType) {
-        const amount = this.exchanger.exchange(money1, currency).amount - this.exchanger.exchange(money2, currency).amount
+        const amount = this.bank.exchange(money1, currency).amount - this.bank.exchange(money2, currency).amount
         if (amount < 0) { throw new Error("culculated amount is minus") }
         return new Money(amount, currency)
     }
@@ -54,29 +54,45 @@ class Calculator {
 }
 
 // 為替比率のデータ
-type RateDataType = { [s: string]: { [s: string]: number } }
-const rateData: RateDataType = {
-    "USD": {
-        "CHF": 2,
-        "USD": 1,
-    },
-    "CHF": {
-        "USD": 0.5,
-        "CHF": 1,
+interface Pair {
+    from: CurrencyType
+    to: CurrencyType
+    rate: number
+}
+
+class RateData {
+    //pairMap: { [s: string]: { [s: string]: Pair } }
+    pairMap: Map<CurrencyType, Map<CurrencyType, Pair>>
+
+    constructor() {
+        this.pairMap = new Map()
+    }
+    addRate(pair: Pair) {
+        this.pairMap.set(pair.from, new Map().set(pair.to, pair))
+        //this.pairMap[pair.from][pair.to] = pair
+    }
+
+    getRate(money: Money, tgtCurrancy: CurrencyType) {
+        if (money.currency === tgtCurrancy) return 1
+        const pair = this.pairMap.get(money.currency)?.get(tgtCurrancy)
+        if (pair === undefined) {
+            throw new Error("unknown rate");
+        }
+        return pair.rate
     }
 }
 
-class Exchanger {
-    rateData: RateDataType
+class Bank {
+    rateData: RateData
     factory: CurrencyFactory
     // 為替に従い変換するクラス
-    constructor(rateData: RateDataType) {
+    constructor(rateData: RateData) {
         this.rateData = rateData
         this.factory = new CurrencyFactory()
     }
 
     exchange(money: Money, tgtCurrancy: CurrencyType) {
-        const rate = this.rateData[money.currency][tgtCurrancy]
+        const rate = this.rateData.getRate(money, tgtCurrancy)
         const newAmount = money.amount * rate
         const newMoney = this.factory.create(newAmount, tgtCurrancy)
         return newMoney
@@ -108,8 +124,11 @@ const main = () => {
     const doller5 = factory.create(7, "USD")
     const franc10 = factory.create(10, "CHF")
 
-    const exchanger = new Exchanger(rateData)
-    const calclator = new Calculator(exchanger)
+    const rateData = new RateData()
+    rateData.addRate({ from: "USD", to: "CHF", rate: 2 })
+    rateData.addRate({ from: "CHF", to: "USD", rate: 0.5 })
+    const bank = new Bank(rateData)
+    const calclator = new Calculator(bank)
     const isEquals = calclator.equals(doller5, franc10)
     const isEquals2 = calclator.equals(doller5, doller5)
     const plusedMoney = calclator.plus(doller5, franc10, "CHF")

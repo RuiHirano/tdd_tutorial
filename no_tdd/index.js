@@ -40,8 +40,8 @@ var Franc = /** @class */ (function (_super) {
     return Franc;
 }(Money));
 var Calculator = /** @class */ (function () {
-    function Calculator(exchanger) {
-        this.exchanger = exchanger;
+    function Calculator(bank) {
+        this.bank = bank;
     }
     // かけ算
     Calculator.prototype.times = function (money, multiplier) {
@@ -49,12 +49,12 @@ var Calculator = /** @class */ (function () {
     };
     // return added money by money2 currency type   money1 + money2
     Calculator.prototype.plus = function (money1, money2, currency) {
-        var amount = this.exchanger.exchange(money1, currency).amount + this.exchanger.exchange(money2, currency).amount;
+        var amount = this.bank.exchange(money1, currency).amount + this.bank.exchange(money2, currency).amount;
         return new Money(amount, money2.currency);
     };
     // money1 - money2
     Calculator.prototype.reduce = function (money1, money2, currency) {
-        var amount = this.exchanger.exchange(money1, currency).amount - this.exchanger.exchange(money2, currency).amount;
+        var amount = this.bank.exchange(money1, currency).amount - this.bank.exchange(money2, currency).amount;
         if (amount < 0) {
             throw new Error("culculated amount is minus");
         }
@@ -65,29 +65,39 @@ var Calculator = /** @class */ (function () {
     };
     return Calculator;
 }());
-var rateData = {
-    "USD": {
-        "CHF": 2,
-        "USD": 1,
-    },
-    "CHF": {
-        "USD": 0.5,
-        "CHF": 1,
+var RateData = /** @class */ (function () {
+    function RateData() {
+        this.pairMap = new Map();
     }
-};
-var Exchanger = /** @class */ (function () {
+    RateData.prototype.addRate = function (pair) {
+        this.pairMap.set(pair.from, new Map().set(pair.to, pair));
+        //this.pairMap[pair.from][pair.to] = pair
+    };
+    RateData.prototype.getRate = function (money, tgtCurrancy) {
+        var _a;
+        if (money.currency === tgtCurrancy)
+            return 1;
+        var pair = (_a = this.pairMap.get(money.currency)) === null || _a === void 0 ? void 0 : _a.get(tgtCurrancy);
+        if (pair === undefined) {
+            throw new Error("unknown rate");
+        }
+        return pair.rate;
+    };
+    return RateData;
+}());
+var Bank = /** @class */ (function () {
     // 為替に従い変換するクラス
-    function Exchanger(rateData) {
+    function Bank(rateData) {
         this.rateData = rateData;
         this.factory = new CurrencyFactory();
     }
-    Exchanger.prototype.exchange = function (money, tgtCurrancy) {
-        var rate = this.rateData[money.currency][tgtCurrancy];
+    Bank.prototype.exchange = function (money, tgtCurrancy) {
+        var rate = this.rateData.getRate(money, tgtCurrancy);
         var newAmount = money.amount * rate;
         var newMoney = this.factory.create(newAmount, tgtCurrancy);
         return newMoney;
     };
-    return Exchanger;
+    return Bank;
 }());
 var CurrencyFactory = /** @class */ (function () {
     // 通貨生成クラス
@@ -109,8 +119,11 @@ var main = function () {
     var factory = new CurrencyFactory();
     var doller5 = factory.create(7, "USD");
     var franc10 = factory.create(10, "CHF");
-    var exchanger = new Exchanger(rateData);
-    var calclator = new Calculator(exchanger);
+    var rateData = new RateData();
+    rateData.addRate({ from: "USD", to: "CHF", rate: 2 });
+    rateData.addRate({ from: "CHF", to: "USD", rate: 0.5 });
+    var bank = new Bank(rateData);
+    var calclator = new Calculator(bank);
     var isEquals = calclator.equals(doller5, franc10);
     var isEquals2 = calclator.equals(doller5, doller5);
     var plusedMoney = calclator.plus(doller5, franc10, "CHF");
