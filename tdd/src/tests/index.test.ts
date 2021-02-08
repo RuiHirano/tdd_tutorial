@@ -130,6 +130,32 @@ describe('calculator class', (): void => {
         const resuletDoller = calculator.reduce(doller5, franc10, "USD")
         expect(resuletDoller.amount === 1 && resuletDoller.currency === "USD").toBe(true);
     });
+
+    test('5$ = $5', (): void => {
+        const factory = new MoneyFactory()
+        const doller5 = factory.create(5, "USD")
+        const bank = new Bank()
+        const calculator = new Calculator(bank)
+        expect(calculator.equals(doller5, doller5)).toBe(true);
+    });
+
+    test('5$ = $10: 数量が違う場合falseを返す', (): void => {
+        const factory = new MoneyFactory()
+        const doller5 = factory.create(5, "USD")
+        const doller10 = factory.create(10, "USD")
+        const bank = new Bank()
+        const calculator = new Calculator(bank)
+        expect(calculator.equals(doller5, doller10)).toBe(false);
+    });
+
+    test('5$ = fran5: 通貨が違う場合falseを返す', (): void => {
+        const factory = new MoneyFactory()
+        const doller5 = factory.create(5, "USD")
+        const franc5 = factory.create(5, "CHF")
+        const bank = new Bank()
+        const calculator = new Calculator(bank)
+        expect(calculator.equals(doller5, franc5)).toBe(false);
+    });
 })
 
 describe('bank class', (): void => {

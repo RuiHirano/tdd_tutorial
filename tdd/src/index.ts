@@ -62,6 +62,9 @@ export class Calculator {
         const newAmount = money.amount * multiplier
         return this.factory.create(newAmount, money.currency)
     }
+    equals(money1: Money, money2: Money) {
+        return money1.amount === money2.amount && money1.currency === money2.currency
+    }
 }
 
 export class Bank {
@@ -91,3 +94,24 @@ export class Bank {
         return this.factory.create(money.amount * rate, to)
     }
 }
+
+const main = () => {
+    const factory = new MoneyFactory()
+    const doller5 = factory.create(7, "USD")
+    const franc10 = factory.create(10, "CHF")
+
+    const bank = new Bank()
+    bank.addRate("USD", "CHF", 2)
+    bank.addRate("CHF", "USD", 0.5)
+    const calclator = new Calculator(bank)
+    const isEquals = calclator.equals(doller5, franc10)
+    const isEquals2 = calclator.equals(doller5, doller5)
+    const plusedMoney = calclator.plus(doller5, franc10, "CHF")
+    const reducedMoney = calclator.reduce(doller5, franc10, "USD")
+
+    console.log(`isEquals ${isEquals} ${isEquals2}, plusedMoney: ${plusedMoney.amount} ${plusedMoney.currency}, reducedMoney: ${reducedMoney.amount} ${reducedMoney.currency}`)
+
+
+}
+
+main()
